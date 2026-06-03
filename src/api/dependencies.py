@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from src.core.snowflake import SnowflakeGenerator
 from src.core.usecases.create_short_url import CreateShortURL
+from src.core.usecases.resolve_url import ResolveURL
+from src.infra.cache.redis import RedisCache
 from src.infra.config import Settings, get_settings
 from src.infra.db.repository import SqlAlchemyUrlRepository
 
@@ -24,8 +26,10 @@ class AppState:
             autoflush=False,
         )
         self.id_generator = SnowflakeGenerator(node_id=self.settings.snowflake_node_id)
+        self.cache = RedisCache(self.settings.redis_url)
 
     async def dispose(self) -> None:
+        await self.cache.aclose()
         await self.engine.dispose()
 
 
@@ -72,3 +76,10 @@ def get_use_case(state: AppStateDep, repository: RepositoryDep) -> CreateShortUR
 
 
 CreateShortURLDep = Annotated[CreateShortURL, Depends(get_use_case)]
+
+
+def get_resolve_use_case(state: AppStateDep, repository: RepositoryDep) -> ResolveURL:
+    return ResolveURL(repository=repository, cache=state.cache)
+
+
+ResolveURLDep = Annotated[ResolveURL, Depends(get_resolve_use_case)]

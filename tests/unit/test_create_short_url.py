@@ -29,6 +29,9 @@ class FakeRepository:
             raise self.fail_with
         self.records.append(record)
 
+    async def find_by_id(self, id: int) -> UrlRecord | None:  # noqa: ARG002
+        return None
+
 
 async def test_returns_short_url_with_decodable_code() -> None:
     gen = FakeIdGenerator([123_456_789_012_345])

@@ -8,7 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from src.api.dependencies import AppState, get_app_state, set_app_state
-from src.api.routes import shortener
+from src.api.routes import redirect, shortener
 
 
 @asynccontextmanager
@@ -27,6 +27,7 @@ def create_app(state: AppState | None = None) -> FastAPI:
         set_app_state(state)
     app = FastAPI(title="Shorty", version="0.1.0", lifespan=lifespan)
     app.include_router(shortener.router)
+    app.include_router(redirect.router)
 
     @app.exception_handler(RequestValidationError)
     async def _validation_handler(_request: Request, exc: RequestValidationError) -> JSONResponse:

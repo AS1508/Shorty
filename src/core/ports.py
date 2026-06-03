@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Protocol
 
@@ -10,6 +10,7 @@ class UrlRecord:
     id: int
     original_url: str
     created_at: datetime
+    is_blocked: bool = field(default=False)
 
 
 class IdGenerator(Protocol):
@@ -18,3 +19,9 @@ class IdGenerator(Protocol):
 
 class UrlRepository(Protocol):
     async def insert(self, record: UrlRecord) -> None: ...
+    async def find_by_id(self, id: int) -> UrlRecord | None: ...
+
+
+class CachePort(Protocol):
+    async def get(self, key: str) -> str | None: ...
+    async def set(self, key: str, value: str, ttl: int) -> None: ...

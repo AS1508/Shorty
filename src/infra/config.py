@@ -23,6 +23,10 @@ class Settings(BaseSettings):
         lt=SNOWFLAKE_NODE_ID_MAX,
         description="Worker ID embedded in generated Snowflake IDs (0..1023).",
     )
+    redis_url: str = Field(
+        default="redis://localhost:6379/0",
+        description="Redis connection URL for the cache layer.",
+    )
 
     @field_validator("short_base_url")
     @classmethod
