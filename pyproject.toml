@@ -5,8 +5,8 @@ description = "URL shortener service (FastAPI + Snowflake IDs + Base62)."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "aiomysql>=0.3.2",
     "alembic>=1.18.4",
-    "asyncpg>=0.31.0",
     "fastapi>=0.136.3",
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.1",

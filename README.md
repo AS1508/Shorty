@@ -1,12 +1,12 @@
 # Shorty
 
-A minimal URL shortener: `POST /Create-URL` with a long URL, get back a short alias. `GET /{short_code}` resolves the alias via a Redis cache (with PostgreSQL fallback) and redirects the client. Built with FastAPI, Snowflake IDs, and Base62 encoding.
+A minimal URL shortener: `POST /Create-URL` with a long URL, get back a short alias. `GET /{short_code}` resolves the alias via a Redis cache (with MySQL fallback) and redirects the client. Built with FastAPI, Snowflake IDs, and Base62 encoding.
 
 ## Prerequisites
 
 - Python 3.12
 - [`uv`](https://docs.astral.sh/uv/) for Python dependency management
-- A PostgreSQL 14+ instance reachable via `DATABASE_URL`
+- A MySQL 8+ instance reachable via `DATABASE_URL`
 - A Redis 6+ instance reachable via `REDIS_URL` (optional in development — the service falls back to DB-only)
 
 ## Setup
@@ -21,7 +21,7 @@ The service reads the following environment variables (with defaults):
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `DATABASE_URL` | `postgresql+asyncpg://shorty:shorty@localhost:5432/shorty` | SQLAlchemy async URL for the application database. |
+| `DATABASE_URL` | `mysql+aiomysql://shorty:shorty@localhost:3306/shorty` | SQLAlchemy async URL for the application database. |
 | `REDIS_URL` | `redis://localhost:6379/0` | Redis connection URL used for the read cache layer. |
 | `SHORT_BASE_URL` | `http://localhost:8000` | Public base URL prepended to generated short codes. |
 | `SNOWFLAKE_NODE_ID` | `0` | Worker ID embedded in generated Snowflake IDs (integer in `[0, 1023]`). |
