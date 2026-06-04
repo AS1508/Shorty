@@ -13,4 +13,4 @@
 
 ## 3. Commit
 
-- [ ] 3.1 Conventional Commits: `feat: switch database driver from PostgreSQL to MySQL (aiomysql)`.
+- [x] 3.1 Conventional Commits: `feat: switch database driver from PostgreSQL to MySQL (aiomysql)`.
