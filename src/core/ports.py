@@ -11,6 +11,7 @@ class UrlRecord:
     original_url: str
     created_at: datetime
     is_blocked: bool = field(default=False)
+    created_by: str | None = field(default=None)
 
 
 class IdGenerator(Protocol):

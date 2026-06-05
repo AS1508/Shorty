@@ -17,6 +17,7 @@ class SqlAlchemyUrlRepository:
             original_url=record.original_url,
             created_at=record.created_at,
             is_blocked=record.is_blocked,
+            created_by=record.created_by,
         )
         self._session.add(row)
         await self._session.flush()
@@ -32,4 +33,5 @@ class SqlAlchemyUrlRepository:
             original_url=row.original_url,
             created_at=row.created_at,
             is_blocked=row.is_blocked,
+            created_by=row.created_by,
         )

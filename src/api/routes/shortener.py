@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, status
 from pydantic import ValidationError
 
-from src.api.dependencies import CreateShortURLDep
+from src.api.dependencies import AuthenticatedUserDep, CreateShortURLDep
 from src.api.schemas import URL_MAX_LENGTH, CreateURLRequest, CreateURLResponse
 from src.core.snowflake import InvalidSystemClock
 
@@ -18,6 +18,7 @@ router = APIRouter()
 async def create_url(
     payload: CreateURLRequest,
     use_case: CreateShortURLDep,
+    authenticated_user: AuthenticatedUserDep,
 ) -> CreateURLResponse:
     url_str = payload.url_str
     if len(url_str) > URL_MAX_LENGTH:
@@ -26,7 +27,7 @@ async def create_url(
             detail=f"url length {len(url_str)} exceeds maximum of {URL_MAX_LENGTH} characters",
         )
     try:
-        short_url = await use_case.execute(url_str)
+        short_url = await use_case.execute(url_str, created_by=authenticated_user)
     except InvalidSystemClock as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

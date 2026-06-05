@@ -2,7 +2,17 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, MetaData, Text, func
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    Index,
+    MetaData,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 URL_MAX_LENGTH = 2048
@@ -27,11 +37,13 @@ class Url(Base):
             f"length(original_url) <= {URL_MAX_LENGTH}",
             name="original_url_length",
         ),
+        Index("ix_urls_created_by", "created_by"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     original_url: Mapped[str] = mapped_column(Text, nullable=False)
     is_blocked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_by: Mapped[str | None] = mapped_column(String(254), nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

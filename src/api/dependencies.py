@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import base64
+import hmac
 from collections.abc import AsyncIterator
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.core.snowflake import SnowflakeGenerator
@@ -83,3 +85,37 @@ def get_resolve_use_case(state: AppStateDep, repository: RepositoryDep) -> Resol
 
 
 ResolveURLDep = Annotated[ResolveURL, Depends(get_resolve_use_case)]
+
+
+def get_settings_dep(state: AppStateDep) -> Settings:
+    return state.settings
+
+
+SettingsDep = Annotated[Settings, Depends(get_settings_dep)]
+
+
+def require_authenticated_user(
+    request: Request,
+    settings: SettingsDep,
+) -> str:
+    email = request.headers.get("X-Authenticated-User", "").strip()
+
+    if not email or "@" not in email or len(email) > 254:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    if settings.proxy_shared_secret:
+        signature = request.headers.get("X-Auth-Signature", "").strip()
+        expected = base64.b64encode(
+            hmac.new(
+                settings.proxy_shared_secret.encode(),
+                email.encode(),
+                "sha256",
+            ).digest()
+        ).decode()
+        if not signature or not hmac.compare_digest(expected, signature):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    return email
+
+
+AuthenticatedUserDep = Annotated[str, Depends(require_authenticated_user)]

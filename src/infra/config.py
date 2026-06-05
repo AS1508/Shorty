@@ -27,6 +27,10 @@ class Settings(BaseSettings):
         default="redis://localhost:6379/0",
         description="Redis connection URL for the cache layer.",
     )
+    proxy_shared_secret: str = Field(
+        default="",
+        description="Shared HMAC secret for verifying X-Auth-Signature from the proxy.",
+    )
 
     @field_validator("short_base_url")
     @classmethod
