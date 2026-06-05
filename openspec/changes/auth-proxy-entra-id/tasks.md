@@ -37,4 +37,4 @@
 
 ## 7. Commit
 
-- [ ] 7.1 Conventional Commits: `feat: add HMAC-signed proxy auth via X-Authenticated-User header for POST /Create-URL`.
+- [x] 7.1 Conventional Commits: `feat: add HMAC-signed proxy auth via X-Authenticated-User header for POST /Create-URL`.
