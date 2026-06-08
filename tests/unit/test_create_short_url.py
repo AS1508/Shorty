@@ -32,11 +32,23 @@ class FakeRepository:
     async def find_by_id(self, id: int) -> UrlRecord | None:  # noqa: ARG002
         return None
 
+    async def delete_expired(self) -> None:
+        pass
+
+
+class FakeCache:
+    async def get(self, key: str) -> str | None:  # noqa: ARG002
+        return None
+
+    async def set(self, key: str, value: str, ttl: int) -> None:  # noqa: ARG002
+        pass
+
 
 async def test_returns_short_url_with_decodable_code() -> None:
     gen = FakeIdGenerator([123_456_789_012_345])
     repo = FakeRepository()
-    use_case = CreateShortURL(gen, repo, "https://sho.rt")
+    cache = FakeCache()
+    use_case = CreateShortURL(gen, repo, "https://sho.rt", cache)
 
     short_url = await use_case.execute("https://example.com/long")
 
@@ -51,7 +63,8 @@ async def test_returns_short_url_with_decodable_code() -> None:
 async def test_trailing_slash_in_base_url_is_stripped() -> None:
     gen = FakeIdGenerator([1])
     repo = FakeRepository()
-    use_case = CreateShortURL(gen, repo, "https://sho.rt/")
+    cache = FakeCache()
+    use_case = CreateShortURL(gen, repo, "https://sho.rt/", cache)
 
     short_url = await use_case.execute("https://example.com")
 
@@ -62,7 +75,8 @@ async def test_repository_failure_propagates_and_no_url_returned() -> None:
     gen = FakeIdGenerator([42])
     repo = FakeRepository()
     repo.fail_with = RuntimeError("db down")
-    use_case = CreateShortURL(gen, repo, "https://sho.rt")
+    cache = FakeCache()
+    use_case = CreateShortURL(gen, repo, "https://sho.rt", cache)
 
     with pytest.raises(RuntimeError, match="db down"):
         await use_case.execute("https://example.com")

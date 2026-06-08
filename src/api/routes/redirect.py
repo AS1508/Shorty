@@ -50,6 +50,11 @@ async def redirect_short_url(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="this URL has been blocked",
         )
+    if result.status == ResolveStatus.EXPIRED:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="This short link has expired",
+        )
     raise HTTPException(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         detail="unexpected resolver status",

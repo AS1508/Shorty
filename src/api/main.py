@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import asyncio
+import contextlib
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -9,17 +12,36 @@ from fastapi.responses import JSONResponse
 
 from src.api.dependencies import AppState, get_app_state, set_app_state
 from src.api.routes import redirect, shortener
+from src.core.expiration import CLEANUP_INTERVAL_SECONDS
+from src.infra.db.repository import SqlAlchemyUrlRepository
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     state = get_app_state()
     app.state.app_state = state
+    cleanup_task = asyncio.create_task(_run_cleanup_loop(state))
     try:
         yield
     finally:
+        cleanup_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await cleanup_task
         await state.dispose()
         set_app_state(None)
+
+
+async def _run_cleanup_loop(state: AppState) -> None:
+    while True:
+        await asyncio.sleep(CLEANUP_INTERVAL_SECONDS)
+        try:
+            async with state.session_factory() as session:
+                repo = SqlAlchemyUrlRepository(session)
+                await repo.delete_expired()
+        except Exception:
+            logger.warning("cleanup cycle failed", exc_info=True)
 
 
 def create_app(state: AppState | None = None) -> FastAPI:

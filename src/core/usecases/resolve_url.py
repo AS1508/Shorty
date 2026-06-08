@@ -3,9 +3,11 @@ from __future__ import annotations
 import contextlib
 import json
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from enum import Enum
 
 from src.core.base62 import decode
+from src.core.expiration import is_expired
 from src.core.ports import CachePort, UrlRepository
 
 _MAX_SNOWFLAKE = (1 << 63) - 1
@@ -15,6 +17,7 @@ class ResolveStatus(Enum):
     OK = "ok"
     NOT_FOUND = "not_found"
     BLOCKED = "blocked"
+    EXPIRED = "expired"
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,6 +29,7 @@ class ResolveResult:
 class ResolveURL:
     _NOT_FOUND_SENTINEL = '{"s":"null"}'
     _BLOCKED_SENTINEL = '{"s":"blocked"}'
+    _EXPIRED_SENTINEL = '{"s":"expired"}'
 
     def __init__(
         self,
@@ -53,12 +57,21 @@ class ResolveURL:
             await self._cache_set(cache_key, self._NOT_FOUND_SENTINEL, ttl=30)
             return ResolveResult(status=ResolveStatus.NOT_FOUND)
 
+        if is_expired(record.expires_at):
+            await self._cache_set(cache_key, self._EXPIRED_SENTINEL, ttl=300)
+            return ResolveResult(status=ResolveStatus.EXPIRED)
+
         if record.is_blocked:
             await self._cache_set(cache_key, self._BLOCKED_SENTINEL, ttl=300)
             return ResolveResult(status=ResolveStatus.BLOCKED)
 
+        expires = record.expires_at
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=UTC)
+        remaining_ttl = int((expires - datetime.now(UTC)).total_seconds())
+        cache_ttl = max(remaining_ttl, 1)
         value = f'{{"s":"ok","u":"{record.original_url}"}}'
-        await self._cache_set(cache_key, value, ttl=3600)
+        await self._cache_set(cache_key, value, ttl=cache_ttl)
         return ResolveResult(status=ResolveStatus.OK, url=record.original_url)
 
     async def _cache_get(self, key: str) -> str | None:
@@ -83,4 +96,6 @@ class ResolveURL:
             return ResolveResult(status=ResolveStatus.OK, url=data.get("u") or "")
         if status == "blocked":
             return ResolveResult(status=ResolveStatus.BLOCKED)
+        if status == "expired":
+            return ResolveResult(status=ResolveStatus.EXPIRED)
         return ResolveResult(status=ResolveStatus.NOT_FOUND)

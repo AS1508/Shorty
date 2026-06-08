@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -44,13 +44,17 @@ class FakeRepository:
         self.find_calls += 1
         return self._records.get(id)
 
+    async def delete_expired(self) -> None:
+        pass
+
 
 def _record(snowflake_id: int, url: str = "https://example.com", *, blocked: bool = False) -> UrlRecord:
     return UrlRecord(
         id=snowflake_id,
         original_url=url,
         is_blocked=blocked,
-        created_at=datetime(2024, 1, 1, tzinfo=UTC),
+        created_at=datetime.now(UTC) - timedelta(days=1),
+        expires_at=datetime.now(UTC) + timedelta(days=60),
     )
 
 

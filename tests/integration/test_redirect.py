@@ -64,6 +64,8 @@ async def client(app_state: AppState) -> AsyncIterator[AsyncClient]:
 
 
 async def test_redirect_valid_url_returns_302(client: AsyncClient, app_state: AppState) -> None:
+    from datetime import UTC, datetime, timedelta
+
     from src.core.base62 import encode
     from src.core.snowflake import SnowflakeGenerator
 
@@ -73,7 +75,12 @@ async def test_redirect_valid_url_returns_302(client: AsyncClient, app_state: Ap
 
     async with app_state.session_factory() as session:
         from src.infra.db.models import Url
-        session.add(Url(id=snowflake_id, original_url="https://target.example.com/page", is_blocked=False))
+        session.add(Url(
+            id=snowflake_id,
+            original_url="https://target.example.com/page",
+            is_blocked=False,
+            expires_at=datetime.now(UTC) + timedelta(days=60),
+        ))
         await session.commit()
 
     response = await client.get(f"/{code}", follow_redirects=False)
@@ -102,6 +109,8 @@ async def test_redirect_negative_caching_skips_db(client: AsyncClient, app_state
 
 
 async def test_redirect_blocked_returns_403(client: AsyncClient, app_state: AppState) -> None:
+    from datetime import UTC, datetime, timedelta
+
     from src.core.base62 import encode
     from src.core.snowflake import SnowflakeGenerator
 
@@ -111,7 +120,12 @@ async def test_redirect_blocked_returns_403(client: AsyncClient, app_state: AppS
 
     async with app_state.session_factory() as session:
         from src.infra.db.models import Url
-        session.add(Url(id=snowflake_id, original_url="https://blocked.example.com", is_blocked=True))
+        session.add(Url(
+            id=snowflake_id,
+            original_url="https://blocked.example.com",
+            is_blocked=True,
+            expires_at=datetime.now(UTC) + timedelta(days=60),
+        ))
         await session.commit()
 
     response = await client.get(f"/{code}", follow_redirects=False)

@@ -16,6 +16,7 @@ class SqlAlchemyUrlRepository:
             id=record.id,
             original_url=record.original_url,
             created_at=record.created_at,
+            expires_at=record.expires_at,
             is_blocked=record.is_blocked,
             created_by=record.created_by,
         )
@@ -32,6 +33,15 @@ class SqlAlchemyUrlRepository:
             id=row.id,
             original_url=row.original_url,
             created_at=row.created_at,
+            expires_at=row.expires_at,
             is_blocked=row.is_blocked,
             created_by=row.created_by,
         )
+
+    async def delete_expired(self) -> None:
+        from sqlalchemy import delete
+        from sqlalchemy.sql import func as sa_func
+
+        stmt = delete(Url).where(Url.expires_at <= sa_func.now())
+        await self._session.execute(stmt)
+        await self._session.commit()

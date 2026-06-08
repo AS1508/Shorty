@@ -74,6 +74,7 @@ def get_use_case(state: AppStateDep, repository: RepositoryDep) -> CreateShortUR
         id_generator=state.id_generator,
         repository=repository,
         base_url=state.settings.short_base_url,
+        cache=state.cache,
     )
 
 

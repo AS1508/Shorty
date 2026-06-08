@@ -29,6 +29,7 @@ async def test_insert_persists_row(session: AsyncSession) -> None:
         id=12345,
         original_url="https://example.com",
         created_at=datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC),
+        expires_at=datetime(2024, 3, 1, 0, 0, 0, tzinfo=UTC),
     )
     await repo.insert(record)
     await session.commit()
