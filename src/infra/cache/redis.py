@@ -24,7 +24,7 @@ class RedisCache:
 
     async def set(self, key: str, value: str, ttl: int) -> None:
         try:
-            await self._client.setex(key, ttl, value)
+            await self._client.set(key, value, ex=ttl)
         except aioredis.ConnectionError:
             logger.warning("redis unavailable for SET %s, skipped", key)
         except Exception:
