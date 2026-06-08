@@ -7,9 +7,9 @@
 ## 2. Verify
 
 - [x] 2.1 Run `uv run ruff check src tests`, `uv run mypy src tests`, `uv run pytest` — all green.
-- [ ] 2.2 Re-run migration against MySQL (`DATABASE_URL="mysql+aiomysql://..." uv run alembic upgrade head`) and confirm table is created.
+- [x] 2.2 Re-run migration against MySQL (`uv run alembic upgrade head`) and confirm table is created.
 - [x] 2.3 Update `README.md` (default `DATABASE_URL` value, driver prerequisite).
-- [ ] 2.4 Smoke test: boot the app against MySQL and exercise `POST /Create-URL` with `curl`.
+- [x] 2.4 Smoke test: boot the app against MySQL and exercise `POST /Create-URL` with `curl`.
 
 ## 3. Commit
 

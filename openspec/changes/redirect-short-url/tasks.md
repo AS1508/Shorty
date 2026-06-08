@@ -40,4 +40,4 @@
 
 ## 7. Commit
 
-- [ ] 7.1 Conventional Commits: `feat: add GET /{short_code} redirect endpoint with Redis cache`.
+- [x] 7.1 Conventional Commits: `feat: add GET /{short_code} redirect endpoint with Redis cache`.
