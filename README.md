@@ -1,6 +1,6 @@
 # Shorty
 
-A minimal URL shortener: `POST /Create-URL` with a long URL, get back a short alias. `GET /{short_code}` resolves the alias via a Redis cache (with MySQL fallback) and redirects the client. Built with FastAPI, Snowflake IDs, and Base62 encoding.
+A minimal URL shortener: `POST /Create-URL` with a long URL, get back a short alias that expires after 60 days. `GET /{short_code}` resolves the alias via a Redis cache (with MySQL fallback) and redirects the client. Built with FastAPI, Snowflake IDs, and Base62 encoding.
 
 ## Prerequisites
 
@@ -66,6 +66,8 @@ Response (HTTP 201):
 
 Validation failures (missing field, non-string value, URL without `http://`/`https://` scheme, URL longer than 2048 characters) return HTTP 400 with `{"detail": "<message>"}`. Persistence or server failures return HTTP 500.
 
+Every created short URL automatically expires after **60 days** (5,184,000 seconds) from creation. The `expires_at` timestamp is stored in the database and the Redis cache key is set with a matching TTL.
+
 ### `GET /{short_code}`
 
 Request:
@@ -85,6 +87,17 @@ Error responses:
 - **400** — short code contains invalid characters (non-Base62).
 - **403** — the URL has been blocked (`is_blocked = true` in the database).
 - **404** — the short code does not match any stored record.
+- **410** — the short link has expired (60-day TTL elapsed).
+
+## URL Expiration
+
+All short URLs have a fixed 60-day lifetime calculated at creation time (`expires_at = created_at + 60 days` in UTC). Expiration is enforced through a dual-validation strategy:
+
+- **Lazy validation** — every `GET /{short_code}` checks `expires_at` against the current UTC time before redirecting.
+- **Active purge** — a background asyncio worker runs hourly to delete expired rows from the database.
+- **Redis TTL** — cache entries are set with a native key-level TTL matching the remaining lifetime, so Redis evicts them automatically.
+
+If a newly generated Snowflake ID collides with an expired-but-not-yet-purged record, the expired record is deleted and the new URL reuses the code.
 
 ## Tests
 
@@ -92,7 +105,7 @@ Error responses:
 uv run pytest
 ```
 
-Unit tests cover the Base62 codec, the Snowflake generator (uniqueness, sequence exhaustion, clock-drift detection), the `CreateShortURL` and `ResolveURL` use cases, and the Redis cache adapter graceful-degradation path. Integration tests run the FastAPI app against an in-memory SQLite database with a fake cache.
+Unit tests cover the Base62 codec, the Snowflake generator (uniqueness, sequence exhaustion, clock-drift detection), the `CreateShortURL` and `ResolveURL` use cases, the expiration logic (`calculate_expires_at`, `is_expired`), and the Redis cache adapter graceful-degradation path. Integration tests run the FastAPI app against an in-memory SQLite database with a fake cache, covering redirect behavior, expired URL resolution (410 Gone), cache TTL propagation, cleanup worker deletion, and shortcode collision reuse.
 
 ## Development
 
