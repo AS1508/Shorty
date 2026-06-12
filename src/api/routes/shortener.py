@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, status
 from pydantic import ValidationError
 
-from src.api.dependencies import AuthenticatedUserDep, CreateShortURLDep
+from src.api.dependencies import AuthenticatedUserDep, CreateShortURLDep, RateLimitCreateDep
 from src.api.schemas import URL_MAX_LENGTH, CreateURLRequest, CreateURLResponse
 from src.core.snowflake import InvalidSystemClock
 
@@ -19,6 +19,7 @@ async def create_url(
     payload: CreateURLRequest,
     use_case: CreateShortURLDep,
     authenticated_user: AuthenticatedUserDep,
+    rate_limit: RateLimitCreateDep,
 ) -> CreateURLResponse:
     url_str = payload.url_str
     if len(url_str) > URL_MAX_LENGTH:

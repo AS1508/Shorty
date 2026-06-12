@@ -8,6 +8,8 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from src.core.ports import CachePort
+from src.core.rate_limit import FixedWindowRateLimiter
 from src.core.snowflake import SnowflakeGenerator
 from src.core.usecases.create_short_url import CreateShortURL
 from src.core.usecases.resolve_url import ResolveURL
@@ -19,7 +21,7 @@ from src.infra.db.repository import SqlAlchemyUrlRepository
 class AppState:
     """Application-scoped singletons built once at startup."""
 
-    def __init__(self, settings: Settings | None = None) -> None:
+    def __init__(self, settings: Settings | None = None, cache: CachePort | None = None) -> None:
         self.settings = settings or get_settings()
         self.engine = create_async_engine(self.settings.database_url, future=True)
         self.session_factory: async_sessionmaker[AsyncSession] = async_sessionmaker(
@@ -28,7 +30,7 @@ class AppState:
             autoflush=False,
         )
         self.id_generator = SnowflakeGenerator(node_id=self.settings.snowflake_node_id)
-        self.cache = RedisCache(self.settings.redis_url)
+        self.cache = cache if cache is not None else RedisCache(self.settings.redis_url)
 
     async def dispose(self) -> None:
         await self.cache.aclose()
@@ -120,3 +122,52 @@ def require_authenticated_user(
 
 
 AuthenticatedUserDep = Annotated[str, Depends(require_authenticated_user)]
+
+
+async def require_rate_limit_create(
+    state: AppStateDep,
+    request: Request,
+    authenticated_user: AuthenticatedUserDep,
+) -> None:
+    limiter = FixedWindowRateLimiter(
+        cache=state.cache,
+        key_prefix="rate:create",
+        limit=state.settings.rate_limit_create_count,
+        window_seconds=state.settings.rate_limit_create_window_seconds,
+    )
+    result = await limiter.check(authenticated_user)
+    if not result.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Rate limit exceeded. Try again in {result.retry_after_seconds} seconds.",
+            headers={"Retry-After": str(result.retry_after_seconds)},
+        )
+
+
+RateLimitCreateDep = Annotated[None, Depends(require_rate_limit_create)]
+
+
+async def require_rate_limit_redirect(
+    state: AppStateDep,
+    request: Request,
+) -> None:
+    ip = FixedWindowRateLimiter.extract_client_ip(
+        forwarded=request.headers.get("X-Forwarded-For"),
+        client_host=request.client.host if request.client else None,
+    )
+    limiter = FixedWindowRateLimiter(
+        cache=state.cache,
+        key_prefix="rate:redirect",
+        limit=state.settings.rate_limit_redirect_count,
+        window_seconds=state.settings.rate_limit_redirect_window_seconds,
+    )
+    result = await limiter.check(ip)
+    if not result.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Rate limit exceeded. Try again in {result.retry_after_seconds} seconds.",
+            headers={"Retry-After": str(result.retry_after_seconds)},
+        )
+
+
+RateLimitRedirectDep = Annotated[None, Depends(require_rate_limit_redirect)]

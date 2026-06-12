@@ -31,6 +31,12 @@ class FakeCache:
             raise ConnectionError("simulated")
         self._store[key] = value
 
+    async def incr(self, key: str) -> int | None:  # noqa: ARG002
+        return 1
+
+    async def expire(self, key: str, ttl: int) -> None:  # noqa: ARG002
+        pass
+
 
 class FakeRepository:
     def __init__(self, records: dict[int, UrlRecord] | None = None) -> None:

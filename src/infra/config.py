@@ -31,6 +31,26 @@ class Settings(BaseSettings):
         default="",
         description="Shared HMAC secret for verifying X-Auth-Signature from the proxy.",
     )
+    rate_limit_create_count: int = Field(
+        default=20,
+        ge=1,
+        description="Max URLs a single authenticated user can create per window.",
+    )
+    rate_limit_create_window_seconds: int = Field(
+        default=3600,
+        ge=1,
+        description="Duration in seconds of the creation rate limit window (default 1 hour).",
+    )
+    rate_limit_redirect_count: int = Field(
+        default=100,
+        ge=1,
+        description="Max redirect requests per IP per window.",
+    )
+    rate_limit_redirect_window_seconds: int = Field(
+        default=60,
+        ge=1,
+        description="Duration in seconds of the redirect rate limit window (default 1 minute).",
+    )
 
     @field_validator("short_base_url")
     @classmethod

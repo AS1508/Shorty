@@ -43,6 +43,12 @@ class FakeCache:
     async def set(self, key: str, value: str, ttl: int) -> None:  # noqa: ARG002
         pass
 
+    async def incr(self, key: str) -> int | None:  # noqa: ARG002
+        return 1
+
+    async def expire(self, key: str, ttl: int) -> None:  # noqa: ARG002
+        pass
+
 
 async def test_returns_short_url_with_decodable_code() -> None:
     gen = FakeIdGenerator([123_456_789_012_345])

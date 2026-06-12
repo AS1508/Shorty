@@ -5,7 +5,7 @@ import re
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import RedirectResponse
 
-from src.api.dependencies import ResolveURLDep
+from src.api.dependencies import RateLimitRedirectDep, ResolveURLDep
 from src.core.usecases.resolve_url import ResolveStatus
 
 router = APIRouter()
@@ -17,6 +17,7 @@ _BASE62_RE = re.compile(r"^[0-9A-Za-z]+$")
 async def redirect_short_url(
     short_code: str,
     use_case: ResolveURLDep,
+    rate_limit: RateLimitRedirectDep,
 ) -> RedirectResponse:
     if not _BASE62_RE.match(short_code):
         raise HTTPException(

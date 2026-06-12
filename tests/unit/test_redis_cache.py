@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from redis.exceptions import ConnectionError as RedisConnectionError
@@ -33,3 +33,21 @@ async def test_get_on_generic_error_returns_none(cache: RedisCache, mocker: Magi
 async def test_close_is_safe(cache: RedisCache, mocker: MagicMock) -> None:
     mocker.patch.object(cache._client, "aclose", side_effect=Exception("ignore"))
     await cache.aclose()
+
+
+async def test_incr_returns_new_value(cache: RedisCache, mocker: MagicMock) -> None:
+    mocker.patch.object(cache._client, "incr", new_callable=AsyncMock, return_value=1)
+    result = await cache.incr("rate:key")
+    assert result == 1
+
+
+async def test_incr_on_connection_error_returns_none(cache: RedisCache, mocker: MagicMock) -> None:
+    mocker.patch.object(cache._client, "incr", new_callable=AsyncMock, side_effect=RedisConnectionError("down"))
+    result = await cache.incr("rate:key")
+    assert result is None
+
+
+async def test_incr_on_generic_error_returns_none(cache: RedisCache, mocker: MagicMock) -> None:
+    mocker.patch.object(cache._client, "incr", new_callable=AsyncMock, side_effect=OSError("broken"))
+    result = await cache.incr("rate:key")
+    assert result is None

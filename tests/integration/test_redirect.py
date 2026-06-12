@@ -23,6 +23,12 @@ class FakeCacheForTest:
     async def set(self, key: str, value: str, ttl: int) -> None:  # noqa: ARG002
         self._store[key] = value
 
+    async def incr(self, key: str) -> int | None:  # noqa: ARG002
+        return 1
+
+    async def expire(self, key: str, ttl: int) -> None:  # noqa: ARG002
+        pass
+
     async def aclose(self) -> None:
         pass
 

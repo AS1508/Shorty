@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-import pytest
-
 from src.core.expiration import URL_TTL_SECONDS, calculate_expires_at, is_expired
 
 

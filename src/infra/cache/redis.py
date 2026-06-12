@@ -30,6 +30,24 @@ class RedisCache:
         except Exception:
             logger.warning("redis SET %s failed, skipped", key, exc_info=True)
 
+    async def incr(self, key: str) -> int | None:
+        try:
+            return await self._client.incr(key)
+        except aioredis.ConnectionError:
+            logger.warning("redis unavailable for INCR %s, falling through", key)
+            return None
+        except Exception:
+            logger.warning("redis INCR %s failed, falling through", key, exc_info=True)
+            return None
+
+    async def expire(self, key: str, ttl: int) -> None:
+        try:
+            await self._client.expire(key, ttl)
+        except aioredis.ConnectionError:
+            logger.warning("redis unavailable for EXPIRE %s, skipped", key)
+        except Exception:
+            logger.warning("redis EXPIRE %s failed, skipped", key, exc_info=True)
+
     async def aclose(self) -> None:
         with contextlib.suppress(Exception):
             await self._client.aclose()

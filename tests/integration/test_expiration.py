@@ -20,13 +20,27 @@ class FakeCacheForExpirationTest:
     def __init__(self) -> None:
         self._store: dict[str, str] = {}
         self.set_calls: list[tuple[str, str, int]] = []
+        self._fail: bool = False
+
+    def set_fail(self, fail: bool) -> None:
+        self._fail = fail
 
     async def get(self, key: str) -> str | None:
+        if self._fail:
+            return None
         return self._store.get(key)
 
     async def set(self, key: str, value: str, ttl: int) -> None:
         self.set_calls.append((key, value, ttl))
         self._store[key] = value
+
+    async def incr(self, key: str) -> int | None:  # noqa: ARG002
+        if self._fail:
+            return None
+        return 1
+
+    async def expire(self, key: str, ttl: int) -> None:  # noqa: ARG002
+        pass
 
     async def aclose(self) -> None:
         pass
@@ -69,7 +83,6 @@ async def client(app_state: AppState) -> AsyncIterator[AsyncClient]:
 
 
 async def test_create_url_persists_expires_at(client: AsyncClient, app_state: AppState) -> None:
-    from datetime import UTC, datetime
 
     from sqlalchemy import select
 
@@ -92,7 +105,6 @@ async def test_create_url_persists_expires_at(client: AsyncClient, app_state: Ap
 
 
 async def test_redirect_expired_url_returns_410(client: AsyncClient, app_state: AppState) -> None:
-    from datetime import UTC, datetime, timedelta
 
     from src.core.base62 import encode
     from src.core.snowflake import SnowflakeGenerator
@@ -131,7 +143,6 @@ async def test_cache_ttl_set_on_creation(client: AsyncClient, app_state: AppStat
 
 
 async def test_cleanup_worker_deletes_expired(client: AsyncClient, app_state: AppState) -> None:
-    from datetime import UTC, datetime, timedelta
 
     from sqlalchemy import select
 
@@ -171,11 +182,9 @@ async def test_cleanup_worker_deletes_expired(client: AsyncClient, app_state: Ap
 
 
 async def test_collision_reuses_expired_code(client: AsyncClient, app_state: AppState) -> None:
-    from datetime import UTC, datetime
 
     from sqlalchemy import select
 
-    from src.core.ports import UrlRecord
     from src.core.usecases.create_short_url import CreateShortURL
     from src.infra.db.repository import SqlAlchemyUrlRepository
 
