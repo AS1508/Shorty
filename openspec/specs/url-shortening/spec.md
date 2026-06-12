@@ -4,7 +4,7 @@
 TBD - created by archiving change generate-short-link. Update Purpose after archive.
 ## Requirements
 ### Requirement: Create short URL
-The system SHALL accept a `POST` request at `/Create-URL` with a JSON body of the form `{"url": "<long-url>"}` and valid authentication headers (`X-Authenticated-User` with a matching `X-Auth-Signature` HMAC), and, when the URL is valid, respond with HTTP `201 Created` and a JSON body `{"short_url": "<public-base-url>/<code>"}` where `<code>` is the Base62-encoded Snowflake ID of the persisted record. The authenticated user's email SHALL be persisted in the `created_by` column of the `urls` table.
+The system SHALL accept a `POST` request at `/Create-URL` with a JSON body of the form `{"url": "<long-url>"}` and valid authentication headers (`X-Authenticated-User` with a matching `X-Auth-Signature` HMAC), and, when the URL is valid, respond with HTTP `201 Created` and a JSON body `{"short_url": "<public-base-url>/<code>"}` where `<code>` is the Base62-encoded Snowflake ID of the persisted record. The authenticated user's email SHALL be persisted in the `created_by` column, the creation timestamp in `created_at`, and the expiration timestamp in `expires_at` (set to `created_at + 60 days` in UTC) of the `urls` table.
 
 #### Scenario: Valid URL is shortened by authenticated user
 - **WHEN** a client sends `POST /Create-URL` with body `{"url": "https://www.example.com/some/long/path"}` and valid `X-Authenticated-User` + `X-Auth-Signature` headers
@@ -13,7 +13,7 @@ The system SHALL accept a `POST` request at `/Create-URL` with a JSON body of th
 
 #### Scenario: Short URL points to a persisted record
 - **WHEN** a valid authenticated request is processed
-- **THEN** the system writes a row to the `urls` table containing the Snowflake ID, the original URL, a `created_at` timestamp, and the email from the `X-Authenticated-User` header in `created_by`
+- **THEN** the system writes a row to the `urls` table containing the Snowflake ID, the original URL, a `created_at` timestamp, an `expires_at` timestamp exactly 60 days after `created_at`, and the email from the `X-Authenticated-User` header in `created_by`
 - **AND** the response is sent only after the row is committed
 
 #### Scenario: Unauthenticated creation is rejected
@@ -85,4 +85,20 @@ The system SHALL read `SHORT_BASE_URL` (used to build the returned `short_url`) 
 #### Scenario: Missing or invalid node ID
 - **WHEN** `SNOWFLAKE_NODE_ID` is unset (defaults to `0`), non-integer, or outside `[0, 1023]`
 - **THEN** the service either uses the default or refuses to start with a clear error
+
+### Requirement: Rate limit check before URL creation
+The system SHALL enforce rate limiting on `POST /Create-URL` requests by authenticated user before processing the request. When the rate limit is exceeded, the system SHALL respond with HTTP `429 Too Many Requests` and SHALL NOT execute the URL creation handler or write to the database.
+
+#### Scenario: Rate limit passes, creation proceeds normally
+- **WHEN** a client sends `POST /Create-URL` with valid authentication and a valid URL payload
+- **AND** the authenticated user is within their creation rate limit
+- **THEN** the system creates the short URL and responds with status `201` as specified
+
+#### Scenario: Rate limit exceeded, creation blocked
+- **WHEN** a client sends `POST /Create-URL` with valid authentication
+- **AND** the authenticated user has exceeded their creation rate limit
+- **THEN** the system responds with status `429`
+- **AND** the URL creation handler is NOT invoked
+- **AND** no row is written to the `urls` table
+- **AND** the `Retry-After` header is present
 
