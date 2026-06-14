@@ -41,6 +41,12 @@ class FakeRedisCache:
     async def expire(self, key: str, ttl: int) -> None:
         pass
 
+    async def delete(self, key: str) -> None:
+        if self._fail:
+            return
+        self._store.pop(key, None)
+        self._counters.pop(key, None)
+
     async def aclose(self) -> None:
         pass
 

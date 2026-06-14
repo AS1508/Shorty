@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from sqlalchemy import select
+from datetime import UTC, datetime, timedelta
+
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.ports import UrlRecord
@@ -36,12 +38,32 @@ class SqlAlchemyUrlRepository:
             expires_at=row.expires_at,
             is_blocked=row.is_blocked,
             created_by=row.created_by,
+            deleted_at=row.deleted_at,
         )
 
     async def delete_expired(self) -> None:
-        from sqlalchemy import delete
         from sqlalchemy.sql import func as sa_func
 
         stmt = delete(Url).where(Url.expires_at <= sa_func.now())
         await self._session.execute(stmt)
         await self._session.commit()
+
+    async def soft_delete(self, id: int) -> int:
+        stmt = (
+            update(Url)
+            .where(Url.id == id, Url.deleted_at.is_(None))
+            .values(deleted_at=datetime.now(UTC))
+        )
+        result = await self._session.execute(stmt)
+        await self._session.commit()
+        return result.rowcount  # type: ignore[no-any-return, attr-defined]
+
+    async def delete_soft_deleted_older_than(self, days: int) -> int:
+        cutoff = datetime.now(UTC) - timedelta(days=days)
+        stmt = delete(Url).where(
+            Url.deleted_at.is_not(None),
+            Url.deleted_at <= cutoff,
+        )
+        result = await self._session.execute(stmt)
+        await self._session.commit()
+        return result.rowcount  # type: ignore[no-any-return, attr-defined]

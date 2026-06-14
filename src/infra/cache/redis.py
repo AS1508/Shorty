@@ -48,6 +48,14 @@ class RedisCache:
         except Exception:
             logger.warning("redis EXPIRE %s failed, skipped", key, exc_info=True)
 
+    async def delete(self, key: str) -> None:
+        try:
+            await self._client.delete(key)
+        except aioredis.ConnectionError:
+            logger.warning("redis unavailable for DELETE %s, skipped", key)
+        except Exception:
+            logger.warning("redis DELETE %s failed, skipped", key, exc_info=True)
+
     async def aclose(self) -> None:
         with contextlib.suppress(Exception):
             await self._client.aclose()

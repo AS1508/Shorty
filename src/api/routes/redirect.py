@@ -56,6 +56,11 @@ async def redirect_short_url(
             status_code=status.HTTP_410_GONE,
             detail="This short link has expired",
         )
+    if result.status == ResolveStatus.DELETED:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="This short link is gone",
+        )
     raise HTTPException(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         detail="unexpected resolver status",

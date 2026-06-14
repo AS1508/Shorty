@@ -29,6 +29,9 @@ class FakeCacheForTest:
     async def expire(self, key: str, ttl: int) -> None:  # noqa: ARG002
         pass
 
+    async def delete(self, key: str) -> None:
+        self._store.pop(key, None)
+
     async def aclose(self) -> None:
         pass
 
@@ -43,7 +46,7 @@ def _make_state(test_db: str) -> AppState:
         snowflake_node_id=0,
     )
     state = AppState(settings)
-    state.cache = FakeCacheForTest()  # type: ignore[assignment]
+    state.cache = FakeCacheForTest()
     return state
 
 
@@ -136,3 +139,54 @@ async def test_redirect_blocked_returns_403(client: AsyncClient, app_state: AppS
 
     response = await client.get(f"/{code}", follow_redirects=False)
     assert response.status_code == 403
+
+
+async def test_redirect_soft_deleted_returns_410(client: AsyncClient, app_state: AppState) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from src.core.base62 import encode
+    from src.core.snowflake import SnowflakeGenerator
+
+    gen = SnowflakeGenerator(node_id=0)
+    snowflake_id = gen.next_id()
+    code = encode(snowflake_id)
+
+    async with app_state.session_factory() as session:
+        from src.infra.db.models import Url
+        session.add(Url(
+            id=snowflake_id,
+            original_url="https://deleted.example.com",
+            is_blocked=False,
+            expires_at=datetime.now(UTC) + timedelta(days=60),
+            created_at=datetime.now(UTC),
+            deleted_at=datetime.now(UTC),
+        ))
+        await session.commit()
+
+    response = await client.get(f"/{code}", follow_redirects=False)
+    assert response.status_code == 410
+
+
+async def test_redirect_expired_returns_410(client: AsyncClient, app_state: AppState) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from src.core.base62 import encode
+    from src.core.snowflake import SnowflakeGenerator
+
+    gen = SnowflakeGenerator(node_id=0)
+    snowflake_id = gen.next_id()
+    code = encode(snowflake_id)
+
+    async with app_state.session_factory() as session:
+        from src.infra.db.models import Url
+        session.add(Url(
+            id=snowflake_id,
+            original_url="https://expired.example.com",
+            is_blocked=False,
+            expires_at=datetime.now(UTC) - timedelta(days=1),
+            created_at=datetime.now(UTC) - timedelta(days=61),
+        ))
+        await session.commit()
+
+    response = await client.get(f"/{code}", follow_redirects=False)
+    assert response.status_code == 410

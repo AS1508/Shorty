@@ -38,6 +38,7 @@ class Url(Base):
             name="original_url_length",
         ),
         Index("ix_urls_created_by", "created_by"),
+        Index("ix_urls_deleted_at", "deleted_at"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -53,4 +54,9 @@ class Url(Base):
         DateTime(timezone=True),
         nullable=False,
         server_default=func.now(),
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        default=None,
     )

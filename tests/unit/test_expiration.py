@@ -1,8 +1,14 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock
 
-from src.core.expiration import URL_TTL_SECONDS, calculate_expires_at, is_expired
+from src.core.expiration import (
+    SOFT_DELETE_PURGE_DAYS,
+    URL_TTL_SECONDS,
+    calculate_expires_at,
+    is_expired,
+)
 
 
 def test_calculate_expiration_date_returns_now_plus_60_days() -> None:
@@ -30,8 +36,6 @@ def test_is_expired_true_when_in_past() -> None:
 
 
 def test_is_expired_false_when_in_future() -> None:
-    from datetime import timedelta
-
     future = datetime.now(UTC) + timedelta(days=1)
     assert is_expired(future) is False
 
@@ -51,3 +55,17 @@ def test_calculate_expires_at_margin_of_error() -> None:
     result = calculate_expires_at(before)
     delta = result - before
     assert abs(delta.total_seconds() - URL_TTL_SECONDS) < 1
+
+
+def test_soft_delete_purge_days_is_30() -> None:
+    assert SOFT_DELETE_PURGE_DAYS == 30
+
+
+async def test_delete_soft_deleted_older_than_calls_repository_with_30_days() -> None:
+    repo = MagicMock()
+    repo.delete_soft_deleted_older_than = AsyncMock(return_value=5)
+
+    result = await repo.delete_soft_deleted_older_than(SOFT_DELETE_PURGE_DAYS)
+
+    assert result == 5
+    repo.delete_soft_deleted_older_than.assert_awaited_once_with(30)

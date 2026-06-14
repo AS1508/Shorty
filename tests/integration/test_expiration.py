@@ -42,6 +42,9 @@ class FakeCacheForExpirationTest:
     async def expire(self, key: str, ttl: int) -> None:  # noqa: ARG002
         pass
 
+    async def delete(self, key: str) -> None:
+        self._store.pop(key, None)
+
     async def aclose(self) -> None:
         pass
 
@@ -56,7 +59,7 @@ def _make_state(test_db: str) -> AppState:
         snowflake_node_id=0,
     )
     state = AppState(settings)
-    state.cache = FakeCacheForExpirationTest()  # type: ignore[assignment]
+    state.cache = FakeCacheForExpirationTest()
     return state
 
 

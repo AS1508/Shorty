@@ -37,6 +37,12 @@ class FakeCache:
     async def expire(self, key: str, ttl: int) -> None:  # noqa: ARG002
         pass
 
+    async def delete(self, key: str) -> None:  # noqa: ARG002
+        self._store.pop(key, None)
+
+    async def aclose(self) -> None:
+        pass
+
 
 class FakeRepository:
     def __init__(self, records: dict[int, UrlRecord] | None = None) -> None:
@@ -52,6 +58,12 @@ class FakeRepository:
 
     async def delete_expired(self) -> None:
         pass
+
+    async def soft_delete(self, id: int) -> int:
+        return 0
+
+    async def delete_soft_deleted_older_than(self, days: int) -> int:
+        return 0
 
 
 def _record(snowflake_id: int, url: str = "https://example.com", *, blocked: bool = False) -> UrlRecord:
@@ -156,3 +168,59 @@ async def test_decode_failure_raises_value_error() -> None:
 
     with pytest.raises(ValueError):
         await use_case.execute("!not-base62!")
+
+
+async def test_deleted_url_returns_deleted_on_fresh_db_read() -> None:
+    record = _record(SID)
+    now = datetime.now(UTC)
+    record = UrlRecord(
+        id=record.id,
+        original_url=record.original_url,
+        created_at=record.created_at,
+        expires_at=record.expires_at,
+        is_blocked=record.is_blocked,
+        created_by=record.created_by,
+        deleted_at=now,
+    )
+    repo = FakeRepository({SID: record})
+    cache = FakeCache()
+    use_case = ResolveURL(repository=repo, cache=cache)
+
+    result = await use_case.execute(CODE)
+
+    assert result.status == ResolveStatus.DELETED
+    assert cache.set_calls == 1
+    assert '"s":"deleted"' in cache._store[str(SID)]
+
+
+async def test_cached_deleted_sentinel_returns_deleted() -> None:
+    repo = FakeRepository()
+    cache = FakeCache()
+    cache._store[str(SID)] = '{"s":"deleted"}'
+    use_case = ResolveURL(repository=repo, cache=cache)
+
+    result = await use_case.execute(CODE)
+
+    assert result.status == ResolveStatus.DELETED
+    assert repo.find_calls == 0
+
+
+async def test_deleted_precedes_expired_when_both_set() -> None:
+    record = _record(SID)
+    now = datetime.now(UTC)
+    record = UrlRecord(
+        id=record.id,
+        original_url=record.original_url,
+        created_at=record.created_at,
+        expires_at=now - timedelta(days=1),  # already expired
+        is_blocked=record.is_blocked,
+        created_by=record.created_by,
+        deleted_at=now,  # also deleted
+    )
+    repo = FakeRepository({SID: record})
+    cache = FakeCache()
+    use_case = ResolveURL(repository=repo, cache=cache)
+
+    result = await use_case.execute(CODE)
+
+    assert result.status == ResolveStatus.DELETED

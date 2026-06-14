@@ -51,6 +51,16 @@ class Settings(BaseSettings):
         ge=1,
         description="Duration in seconds of the redirect rate limit window (default 1 minute).",
     )
+    rate_limit_my_urls_count: int = Field(
+        default=60,
+        ge=1,
+        description="Max requests per user per window on /my-urls endpoints.",
+    )
+    rate_limit_my_urls_window_seconds: int = Field(
+        default=60,
+        ge=1,
+        description="Duration in seconds of the /my-urls rate limit window (default 1 minute).",
+    )
 
     @field_validator("short_base_url")
     @classmethod

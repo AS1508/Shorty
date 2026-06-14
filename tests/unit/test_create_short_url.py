@@ -35,6 +35,12 @@ class FakeRepository:
     async def delete_expired(self) -> None:
         pass
 
+    async def soft_delete(self, id: int) -> int:
+        return 0
+
+    async def delete_soft_deleted_older_than(self, days: int) -> int:
+        return 0
+
 
 class FakeCache:
     async def get(self, key: str) -> str | None:  # noqa: ARG002
@@ -47,6 +53,12 @@ class FakeCache:
         return 1
 
     async def expire(self, key: str, ttl: int) -> None:  # noqa: ARG002
+        pass
+
+    async def delete(self, key: str) -> None:  # noqa: ARG002
+        pass
+
+    async def aclose(self) -> None:
         pass
 
 

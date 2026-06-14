@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 URL_TTL_SECONDS = 5_184_000  # 60 days = 60 * 24 * 3600
 CLEANUP_INTERVAL_SECONDS = 3600  # 1 hour
+SOFT_DELETE_PURGE_DAYS = 30
 
 
 def calculate_expires_at(created_at: datetime) -> datetime:

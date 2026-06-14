@@ -18,6 +18,7 @@ class ResolveStatus(Enum):
     NOT_FOUND = "not_found"
     BLOCKED = "blocked"
     EXPIRED = "expired"
+    DELETED = "deleted"
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,6 +31,7 @@ class ResolveURL:
     _NOT_FOUND_SENTINEL = '{"s":"null"}'
     _BLOCKED_SENTINEL = '{"s":"blocked"}'
     _EXPIRED_SENTINEL = '{"s":"expired"}'
+    _DELETED_SENTINEL = '{"s":"deleted"}'
 
     def __init__(
         self,
@@ -57,13 +59,17 @@ class ResolveURL:
             await self._cache_set(cache_key, self._NOT_FOUND_SENTINEL, ttl=30)
             return ResolveResult(status=ResolveStatus.NOT_FOUND)
 
-        if is_expired(record.expires_at):
-            await self._cache_set(cache_key, self._EXPIRED_SENTINEL, ttl=300)
-            return ResolveResult(status=ResolveStatus.EXPIRED)
-
         if record.is_blocked:
             await self._cache_set(cache_key, self._BLOCKED_SENTINEL, ttl=300)
             return ResolveResult(status=ResolveStatus.BLOCKED)
+
+        if record.deleted_at is not None:
+            await self._cache_set(cache_key, self._DELETED_SENTINEL, ttl=300)
+            return ResolveResult(status=ResolveStatus.DELETED)
+
+        if is_expired(record.expires_at):
+            await self._cache_set(cache_key, self._EXPIRED_SENTINEL, ttl=300)
+            return ResolveResult(status=ResolveStatus.EXPIRED)
 
         expires = record.expires_at
         if expires.tzinfo is None:
@@ -98,4 +104,6 @@ class ResolveURL:
             return ResolveResult(status=ResolveStatus.BLOCKED)
         if status == "expired":
             return ResolveResult(status=ResolveStatus.EXPIRED)
+        if status == "deleted":
+            return ResolveResult(status=ResolveStatus.DELETED)
         return ResolveResult(status=ResolveStatus.NOT_FOUND)

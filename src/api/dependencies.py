@@ -13,6 +13,7 @@ from src.core.rate_limit import FixedWindowRateLimiter
 from src.core.snowflake import SnowflakeGenerator
 from src.core.usecases.create_short_url import CreateShortURL
 from src.core.usecases.resolve_url import ResolveURL
+from src.core.usecases.soft_delete_my_url import SoftDeleteMyUrl
 from src.infra.cache.redis import RedisCache
 from src.infra.config import Settings, get_settings
 from src.infra.db.repository import SqlAlchemyUrlRepository
@@ -88,6 +89,13 @@ def get_resolve_use_case(state: AppStateDep, repository: RepositoryDep) -> Resol
 
 
 ResolveURLDep = Annotated[ResolveURL, Depends(get_resolve_use_case)]
+
+
+def get_soft_delete_use_case(state: AppStateDep, repository: RepositoryDep) -> SoftDeleteMyUrl:
+    return SoftDeleteMyUrl(repository=repository, cache=state.cache)
+
+
+SoftDeleteMyUrlDep = Annotated[SoftDeleteMyUrl, Depends(get_soft_delete_use_case)]
 
 
 def get_settings_dep(state: AppStateDep) -> Settings:
@@ -171,3 +179,26 @@ async def require_rate_limit_redirect(
 
 
 RateLimitRedirectDep = Annotated[None, Depends(require_rate_limit_redirect)]
+
+
+async def require_rate_limit_my_urls(
+    state: AppStateDep,
+    request: Request,
+    authenticated_user: AuthenticatedUserDep,
+) -> None:
+    limiter = FixedWindowRateLimiter(
+        cache=state.cache,
+        key_prefix="rate:my_urls",
+        limit=state.settings.rate_limit_my_urls_count,
+        window_seconds=state.settings.rate_limit_my_urls_window_seconds,
+    )
+    result = await limiter.check(authenticated_user)
+    if not result.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Rate limit exceeded. Try again in {result.retry_after_seconds} seconds.",
+            headers={"Retry-After": str(result.retry_after_seconds)},
+        )
+
+
+MyUrlsRateLimitDep = Annotated[None, Depends(require_rate_limit_my_urls)]
