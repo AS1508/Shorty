@@ -56,8 +56,8 @@ def create_app(state: AppState | None = None) -> FastAPI:
         set_app_state(state)
     app = FastAPI(title="Shorty", version="0.1.0", lifespan=lifespan)
     app.include_router(shortener.router)
-    app.include_router(redirect.router)
     app.include_router(my_urls.router)
+    app.include_router(redirect.router)
 
     @app.exception_handler(RequestValidationError)
     async def _validation_handler(_request: Request, exc: RequestValidationError) -> JSONResponse:

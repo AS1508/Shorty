@@ -12,6 +12,8 @@ from src.core.ports import CachePort
 from src.core.rate_limit import FixedWindowRateLimiter
 from src.core.snowflake import SnowflakeGenerator
 from src.core.usecases.create_short_url import CreateShortURL
+from src.core.usecases.get_my_url import GetMyUrl
+from src.core.usecases.list_my_urls import ListMyUrls
 from src.core.usecases.resolve_url import ResolveURL
 from src.core.usecases.soft_delete_my_url import SoftDeleteMyUrl
 from src.infra.cache.redis import RedisCache
@@ -96,6 +98,20 @@ def get_soft_delete_use_case(state: AppStateDep, repository: RepositoryDep) -> S
 
 
 SoftDeleteMyUrlDep = Annotated[SoftDeleteMyUrl, Depends(get_soft_delete_use_case)]
+
+
+def get_list_my_urls_use_case(state: AppStateDep, repository: RepositoryDep) -> ListMyUrls:
+    return ListMyUrls(repository=repository)
+
+
+ListMyUrlsDep = Annotated[ListMyUrls, Depends(get_list_my_urls_use_case)]
+
+
+def get_my_url_use_case(state: AppStateDep, repository: RepositoryDep) -> GetMyUrl:
+    return GetMyUrl(repository=repository)
+
+
+GetMyUrlDep = Annotated[GetMyUrl, Depends(get_my_url_use_case)]
 
 
 def get_settings_dep(state: AppStateDep) -> Settings:

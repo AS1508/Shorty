@@ -67,3 +67,24 @@ class SqlAlchemyUrlRepository:
         result = await self._session.execute(stmt)
         await self._session.commit()
         return result.rowcount  # type: ignore[no-any-return, attr-defined]
+
+    async def find_all_by_created_by(
+        self, created_by: str, cursor: int | None, limit: int
+    ) -> list[UrlRecord]:
+        stmt = select(Url).where(Url.created_by == created_by).order_by(Url.id.desc()).limit(limit)
+        if cursor is not None:
+            stmt = stmt.where(Url.id < cursor)
+        result = await self._session.execute(stmt)
+        rows = result.scalars().all()
+        return [
+            UrlRecord(
+                id=row.id,
+                original_url=row.original_url,
+                created_at=row.created_at,
+                expires_at=row.expires_at,
+                is_blocked=bool(row.is_blocked),
+                created_by=row.created_by,
+                deleted_at=row.deleted_at,
+            )
+            for row in rows
+        ]
