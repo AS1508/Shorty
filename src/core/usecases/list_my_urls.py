@@ -17,6 +17,7 @@ class ListMyUrlsItem:
     is_blocked: bool
     created_by: str | None
     deleted_at: datetime | None
+    clicks: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,6 +50,7 @@ class ListMyUrls:
                 is_blocked=r.is_blocked,
                 created_by=r.created_by,
                 deleted_at=r.deleted_at,
+                clicks=r.clicks,
             )
             for r in records
         ]

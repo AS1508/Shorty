@@ -14,6 +14,7 @@ class UrlRecord:
     is_blocked: bool = field(default=False)
     created_by: str | None = field(default=None)
     deleted_at: datetime | None = field(default=None)
+    clicks: int = field(default=0)
 
 
 class IdGenerator(Protocol):
@@ -31,6 +32,7 @@ class UrlRepository(Protocol):
     ) -> list[UrlRecord]: ...
     async def update_blocked(self, id: int, blocked: bool) -> int: ...
     async def find_all(self, cursor: int | None, limit: int) -> list[UrlRecord]: ...
+    async def increment_clicks(self, id: int) -> None: ...
 
 
 class CachePort(Protocol):

@@ -60,3 +60,9 @@ class Url(Base):
         nullable=True,
         default=None,
     )
+    clicks: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+        default=0,
+        server_default="0",
+    )

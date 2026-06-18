@@ -39,6 +39,7 @@ class SqlAlchemyUrlRepository:
             is_blocked=row.is_blocked,
             created_by=row.created_by,
             deleted_at=row.deleted_at,
+            clicks=row.clicks,
         )
 
     async def delete_expired(self) -> None:
@@ -90,6 +91,11 @@ class SqlAlchemyUrlRepository:
         result = await self._session.execute(stmt)
         return [_row_to_record(row) for row in result.scalars().all()]
 
+    async def increment_clicks(self, id: int) -> None:
+        stmt = update(Url).where(Url.id == id).values(clicks=Url.clicks + 1)
+        await self._session.execute(stmt)
+        await self._session.commit()
+
 
 def _row_to_record(row: Url) -> UrlRecord:
     return UrlRecord(
@@ -100,4 +106,5 @@ def _row_to_record(row: Url) -> UrlRecord:
         is_blocked=bool(row.is_blocked),
         created_by=row.created_by,
         deleted_at=row.deleted_at,
+        clicks=row.clicks,
     )

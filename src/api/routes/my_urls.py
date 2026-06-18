@@ -35,6 +35,7 @@ def _build_item(item: ListMyUrlsItem, base_url: str) -> dict[str, Any]:
         "is_expired": item.is_expired,
         "is_blocked": item.is_blocked,
         "deleted_at": item.deleted_at.isoformat() if item.deleted_at else None,
+        "clicks": item.clicks,
     }
 
 
@@ -86,6 +87,7 @@ async def get_my_url(
         "is_expired": is_expired(record.expires_at),
         "is_blocked": record.is_blocked,
         "deleted_at": record.deleted_at.isoformat() if record.deleted_at else None,
+        "clicks": record.clicks,
     }
 
 

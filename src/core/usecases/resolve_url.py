@@ -52,7 +52,11 @@ class ResolveURL:
 
         cached = await self._cache_get(cache_key)
         if cached is not None:
-            return self._parse_cached(cached)
+            result = self._parse_cached(cached)
+            if result.status == ResolveStatus.OK:
+                with contextlib.suppress(Exception):
+                    await self._repository.increment_clicks(snowflake_id)
+            return result
 
         record = await self._repository.find_by_id(snowflake_id)
         if record is None:
@@ -78,6 +82,8 @@ class ResolveURL:
         cache_ttl = max(remaining_ttl, 1)
         value = f'{{"s":"ok","u":"{record.original_url}"}}'
         await self._cache_set(cache_key, value, ttl=cache_ttl)
+        with contextlib.suppress(Exception):
+            await self._repository.increment_clicks(snowflake_id)
         return ResolveResult(status=ResolveStatus.OK, url=record.original_url)
 
     async def _cache_get(self, key: str) -> str | None:
