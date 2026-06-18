@@ -75,16 +75,29 @@ class SqlAlchemyUrlRepository:
         if cursor is not None:
             stmt = stmt.where(Url.id < cursor)
         result = await self._session.execute(stmt)
-        rows = result.scalars().all()
-        return [
-            UrlRecord(
-                id=row.id,
-                original_url=row.original_url,
-                created_at=row.created_at,
-                expires_at=row.expires_at,
-                is_blocked=bool(row.is_blocked),
-                created_by=row.created_by,
-                deleted_at=row.deleted_at,
-            )
-            for row in rows
-        ]
+        return [_row_to_record(row) for row in result.scalars().all()]
+
+    async def update_blocked(self, id: int, blocked: bool) -> int:
+        stmt = update(Url).where(Url.id == id).values(is_blocked=blocked)
+        result = await self._session.execute(stmt)
+        await self._session.commit()
+        return result.rowcount  # type: ignore[no-any-return, attr-defined]
+
+    async def find_all(self, cursor: int | None, limit: int) -> list[UrlRecord]:
+        stmt = select(Url).order_by(Url.id.desc()).limit(limit)
+        if cursor is not None:
+            stmt = stmt.where(Url.id < cursor)
+        result = await self._session.execute(stmt)
+        return [_row_to_record(row) for row in result.scalars().all()]
+
+
+def _row_to_record(row: Url) -> UrlRecord:
+    return UrlRecord(
+        id=row.id,
+        original_url=row.original_url,
+        created_at=row.created_at,
+        expires_at=row.expires_at,
+        is_blocked=bool(row.is_blocked),
+        created_by=row.created_by,
+        deleted_at=row.deleted_at,
+    )

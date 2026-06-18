@@ -11,11 +11,14 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from src.core.ports import CachePort
 from src.core.rate_limit import FixedWindowRateLimiter
 from src.core.snowflake import SnowflakeGenerator
+from src.core.usecases.block_url import BlockUrl
 from src.core.usecases.create_short_url import CreateShortURL
 from src.core.usecases.get_my_url import GetMyUrl
+from src.core.usecases.list_all_urls import ListAllUrls
 from src.core.usecases.list_my_urls import ListMyUrls
 from src.core.usecases.resolve_url import ResolveURL
 from src.core.usecases.soft_delete_my_url import SoftDeleteMyUrl
+from src.core.usecases.unblock_url import UnblockUrl
 from src.infra.cache.redis import RedisCache
 from src.infra.config import Settings, get_settings
 from src.infra.db.repository import SqlAlchemyUrlRepository
@@ -114,6 +117,27 @@ def get_my_url_use_case(state: AppStateDep, repository: RepositoryDep) -> GetMyU
 GetMyUrlDep = Annotated[GetMyUrl, Depends(get_my_url_use_case)]
 
 
+def get_block_url_use_case(state: AppStateDep, repository: RepositoryDep) -> BlockUrl:
+    return BlockUrl(repository=repository, cache=state.cache)
+
+
+BlockUrlDep = Annotated[BlockUrl, Depends(get_block_url_use_case)]
+
+
+def get_unblock_url_use_case(state: AppStateDep, repository: RepositoryDep) -> UnblockUrl:
+    return UnblockUrl(repository=repository, cache=state.cache)
+
+
+UnblockUrlDep = Annotated[UnblockUrl, Depends(get_unblock_url_use_case)]
+
+
+def get_list_all_urls_use_case(state: AppStateDep, repository: RepositoryDep) -> ListAllUrls:
+    return ListAllUrls(repository=repository)
+
+
+ListAllUrlsDep = Annotated[ListAllUrls, Depends(get_list_all_urls_use_case)]
+
+
 def get_settings_dep(state: AppStateDep) -> Settings:
     return state.settings
 
@@ -146,6 +170,18 @@ def require_authenticated_user(
 
 
 AuthenticatedUserDep = Annotated[str, Depends(require_authenticated_user)]
+
+
+def require_admin_user(
+    authenticated_user: AuthenticatedUserDep,
+    settings: SettingsDep,
+) -> str:
+    if authenticated_user not in settings.admin_emails:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    return authenticated_user
+
+
+AdminUserDep = Annotated[str, Depends(require_admin_user)]
 
 
 async def require_rate_limit_create(

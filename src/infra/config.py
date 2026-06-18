@@ -62,10 +62,24 @@ class Settings(BaseSettings):
         description="Duration in seconds of the /my-urls rate limit window (default 1 minute).",
     )
 
+    admin_emails: frozenset[str] = Field(
+        default_factory=frozenset,
+        description="Comma-separated admin email addresses (empty = no admins).",
+    )
+
     @field_validator("short_base_url")
     @classmethod
     def _strip_trailing_slash(cls, value: str) -> str:
         return value.rstrip("/")
+
+    @field_validator("admin_emails", mode="before")
+    @classmethod
+    def _parse_admin_emails(cls, v: object) -> frozenset[str]:
+        if isinstance(v, str):
+            return frozenset(e.strip() for e in v.split(",") if e.strip())
+        if isinstance(v, (list, set, frozenset)):
+            return frozenset(str(e).strip() for e in v)
+        return frozenset()
 
 
 def get_settings() -> Settings:

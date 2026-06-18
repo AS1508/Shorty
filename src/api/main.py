@@ -11,7 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from src.api.dependencies import AppState, get_app_state, set_app_state
-from src.api.routes import my_urls, redirect, shortener
+from src.api.routes import admin, my_urls, redirect, shortener
 from src.core.expiration import CLEANUP_INTERVAL_SECONDS, SOFT_DELETE_PURGE_DAYS
 from src.infra.db.repository import SqlAlchemyUrlRepository
 
@@ -57,6 +57,7 @@ def create_app(state: AppState | None = None) -> FastAPI:
     app = FastAPI(title="Shorty", version="0.1.0", lifespan=lifespan)
     app.include_router(shortener.router)
     app.include_router(my_urls.router)
+    app.include_router(admin.router)
     app.include_router(redirect.router)
 
     @app.exception_handler(RequestValidationError)
